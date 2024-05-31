@@ -24,7 +24,7 @@ const MongoClient = require("mongodb").MongoClient;
 
 let db;
 MongoClient.connect(
-  "mongodb+srv://khalyboss198:y4JtCE4S6IMPPKg8@cluster0.cbevbiq.mongodb.net/",
+  "mongodb+srv://khalyboss198:newapppassword@cluster0.cbevbiq.mongodb.net/",
   (err, client) => {
     db = client.db("webstore");
   }
@@ -35,13 +35,27 @@ app.get("/", (req, res, next) => {
 });
 
 // retrieve all the object from an collection
-app.get("/collection/:collectionName", (req, res, next) => {
-  db.collection(req.params.collectionName)
-    .find({})
-    .toArray((e, results) => {
-      if (e) return next(e);
-      res.send(results);
-    });
+// app.get("/collection/:collectionName", (req, res, next) => {
+//   db.collection(req.params.collectionName)
+//     .find({})
+//     .toArray((e, results) => {
+//       if (e) return next(e);
+//       res.send(results);
+//     });
+// });
+
+// retrieve all the object from an collection
+app.get("/collection/:collectionName", (req, res) => {
+  try {
+    db.collection(req.params.collectionName)
+      .find({})
+      .toArray()
+      .then((results) => {
+        res.send(results);
+      });
+  } catch (error) {
+    console.log(error);
+  }
 });
 
 app.post("/search/collection/:collectionName/", (req, res, next) => {
