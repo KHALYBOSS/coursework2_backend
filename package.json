@@ -9,6 +9,6 @@
     "dependencies": {
         "body-parser": "",
         "express": "^4.19.2",
-        "mongodb": "^3.6.3"
+        "mongodb": "^6.7.0"
     }
 }
