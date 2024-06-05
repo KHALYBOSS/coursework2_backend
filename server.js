@@ -6,7 +6,7 @@ const app = express();
 
 // config Express.js
 app.use(express.json());
-// app.use(cors());
+app.use(cors());
 
 // Connecting to the database
 var db;
@@ -76,7 +76,7 @@ app.post("/search/collection/lessons/", (req, res) => {
   }
 });
 
-//to insert a document to the collection
+//to insert a document to the collection in mongodb
 app.post("/collection/:collectionName", (req, res) => {
   try {
     db.collection(req.params.collectionName)
@@ -88,7 +88,7 @@ app.post("/collection/:collectionName", (req, res) => {
     console.log(error);
   }
 });
-
+//  route to get a lesson by id
 app.get("/collection/:collectionName/:id", (req, res) => {
   try {
     db.collection(req.params.collectionName)
@@ -101,7 +101,7 @@ app.get("/collection/:collectionName/:id", (req, res) => {
   }
 });
 
-//to update a document by ID
+// route to update a document by ID
 app.put("/collection/:collectionName/:id", (req, res) => {
   try {
     db.collection(req.params.collectionName)
@@ -113,7 +113,7 @@ app.put("/collection/:collectionName/:id", (req, res) => {
     console.log(error);
   }
 });
-
+// route to delete a document 
 app.delete("/collection/:collectionName/:id", (req, res) => {
   try {
     db.collection(req.params.collectionName)
@@ -125,7 +125,7 @@ app.delete("/collection/:collectionName/:id", (req, res) => {
     console.log(error);
   }
 });
-
+// setting app port
 app.listen(3000, () => {
   console.log("Express.js server running at PORT 3000");
 });
