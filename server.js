@@ -24,7 +24,7 @@ let db;
 // Connect to MongoDB and start the server
 MongoClient.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(client => {
-    db = client.db('Coursework2');
+    db = client.db('webstore');
     console.log("Connected to MongoDB");
 
     // Start the server only after successful connection
