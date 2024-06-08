@@ -1,97 +1,163 @@
+// Import dependencies modules:
 const express = require('express');
-const { MongoClient, ObjectID } = require('mongodb');
+const { MongoClient, ObjectId } = require("mongodb");
 
+// Create an Express.js instance:
 const app = express();
 
+// Config Express.js
 app.use(express.json());
-app.set('port', 3000);
+app.set('port', 3000); // Update to match the listening port
+
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS,POST,PUT,DELETE');
-  res.setHeader('Access-Control-Allow-Headers', 'Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS,POST,PUT');
+  res.setHeader('Access-Control-Allow-Headers', 'Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers');
   next();
 });
 
+// MongoDB URI
 const uri = 'mongodb+srv://khalyboss198:newapppassword@cluster0.cbevbiq.mongodb.net/';
 let db;
 
-async function connectToDB() {
-  try {
-    const client = await MongoClient.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
-    db = client.db('webstore');
-    console.log('Successfully connected to MongoDB!');
-  } catch (err) {
-    console.error('Database connection failed. - Error:', err);
-    process.exit(1);
-  }
-}
+// Connect to MongoDB and start the server
+MongoClient.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(client => {
+    db = client.db('Coursework2');
+    console.log("Connected to MongoDB");
 
-connectToDB();
+    // Start the server only after successful connection
+    app.listen(3000, () => {
+      console.log("Express.js server running at PORT 3000");
+    });
+  })
+  .catch(error => {
+    console.error("Failed to connect to MongoDB", error);
+  });
 
-app.get('/', (req, res) => {
-  res.send('Select a collection, e.g., /collection/messages');
-});
-
-app.param('collectionName', (req, res, next, collectionName) => {
-  req.collection = db.collection(collectionName);
+// Logger Middleware
+app.use((req, res, next) => {
+  var log = `${req.ip} -- ${req.method} ${req.path} ${res.statusCode}`;
+  console.log(log, req.body);
   next();
 });
 
-app.get('/collection/:collectionName', async (req, res, next) => {
+app.get("/", (req, res) => {
+  res.send("Select a collection, e.g., /collection/lessons");
+});
+
+// Retrieve all objects from a collection
+app.get("/collection/:collectionName", (req, res) => {
   try {
-    const results = await req.collection.find({}).toArray();
-    res.json(results);
-  } catch (e) {
-    next(e);
+    db.collection(req.params.collectionName)
+      .find({})
+      .toArray()
+      .then(results => {
+        res.send(results);
+      })
+      .catch(error => {
+        res.status(500).send({ error: error.message });
+      });
+  } catch (error) {
+    res.status(500).send({ error: error.message });
   }
 });
 
-app.post('/collection/:collectionName', async (req, res, next) => {
+// Search
+app.post("/search/collection/lessons/", (req, res) => {
   try {
-    const result = await req.collection.insertOne(req.body);
-    res.json(result.ops);
-  } catch (e) {
-    next(e);
+    let search = req.body.search;
+    let sort = req.body.sort || "title";
+    let order = req.body.order === "desc" ? -1 : 1;
+
+    if (search) {
+      search = {
+        $or: [
+          { title: { $regex: search, $options: "i" } },
+          { subject: { $regex: search, $options: "i" } },
+          { location: { $regex: search, $options: "i" } },
+        ],
+      };
+    } else {
+      search = {};
+    }
+
+    db.collection("lessons")
+      .find(search)
+      .sort({ [sort]: order })
+      .toArray()
+      .then(results => {
+        res.send(results);
+      })
+      .catch(error => {
+        res.status(500).send({ error: error.message });
+      });
+  } catch (error) {
+    res.status(500).send({ error: error.message });
   }
 });
 
-app.get('/collection/:collectionName/:id', async (req, res, next) => {
+// Insert a document into the collection
+app.post("/collection/:collectionName", (req, res) => {
   try {
-    const result = await req.collection.findOne({ _id: new ObjectID(req.params.id) });
-    res.json(result);
-  } catch (e) {
-    next(e);
+    db.collection(req.params.collectionName)
+      .insertOne(req.body)
+      .then(results => {
+        res.send(results);
+      })
+      .catch(error => {
+        res.status(500).send({ error: error.message });
+      });
+  } catch (error) {
+    res.status(500).send({ error: error.message });
   }
 });
 
-app.put('/collection/:collectionName/:id', async (req, res, next) => {
+// Retrieve a document by ID
+app.get("/collection/:collectionName/:id", (req, res) => {
   try {
-    const result = await req.collection.updateOne(
-      { _id: new ObjectID(req.params.id) },
-      { $set: req.body },
-      { safe: true, multi: false }
-    );
-    res.json(result.matchedCount === 1 ? { msg: 'success' } : { msg: 'error' });
-  } catch (e) {
-    next(e);
+    db.collection(req.params.collectionName)
+      .findOne({ _id: new ObjectId(req.params.id) })
+      .then(results => {
+        res.send(results);
+      })
+      .catch(error => {
+        res.status(500).send({ error: error.message });
+      });
+  } catch (error) {
+    res.status(500).send({ error: error.message });
   }
 });
 
-app.delete('/collection/:collectionName/:id', async (req, res, next) => {
+// Update a document by ID
+app.put("/collection/:collectionName/:id", (req, res) => {
   try {
-    const result = await req.collection.deleteOne({ _id: new ObjectID(req.params.id) });
-    res.json(result.deletedCount === 1 ? { msg: 'success' } : { msg: 'error' });
-  } catch (e) {
-    next(e);
+    db.collection(req.params.collectionName)
+      .updateOne({ _id: new ObjectId(req.params.id) }, { $set: req.body })
+      .then(results => {
+        res.send(results);
+      })
+      .catch(error => {
+        res.status(500).send({ error: error.message });
+      });
+  } catch (error) {
+    res.status(500).send({ error: error.message });
   }
 });
 
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send('Something went wrong!');
-});
-
-app.listen(3000, () => {
-  console.log('listening on port 3000');
+// Delete a document by ID
+app.delete("/collection/:collectionName/:id", (req, res) => {
+  try {
+    db.collection(req.params.collectionName)
+      .deleteOne({ _id: new ObjectId(req.params.id) })
+      .then(results => {
+        res.send(results);
+      })
+      .catch(error => {
+        res.status(500).send({ error: error.message });
+      });
+  } catch (error) {
+    res.status(500).send({ error: error.message });
+  }
 });
