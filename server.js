@@ -4,20 +4,27 @@ const cors = require("cors");
 
 const app = express();
 
-// config Express.js
+// Config Express.js
 app.use(express.json());
 app.use(cors());
 
-// Connecting to the database
-var db;
-const uri = "mongodb+srv://khalyboss198:newapppassword@cluster0.cbevbiq.mongodb.net/";
-try {
-  const client = new MongoClient(uri);
-  db = client.db("webstore");
-  console.log("Successfully connected to MongoDB!");
-} catch (e) {
-  console.error("Database connection failed. - Error:" + e);
+// MongoDB connection
+let db;
+const uri = "mongodb+srv://khalyboss198:newapppassword@cluster0.cbevbiq.mongodb.net/webstore";
+
+async function connectToDB() {
+  try {
+    const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+    await client.connect();
+    db = client.db("webstore");
+    console.log("Successfully connected to MongoDB!");
+  } catch (e) {
+    console.error("Database connection failed. - Error:" + e);
+    process.exit(1);
+  }
 }
+
+connectToDB();
 
 // Logger Middleware
 app.use((req, res, next) => {
@@ -27,105 +34,89 @@ app.use((req, res, next) => {
 });
 
 app.get("/", (req, res) => {
-  // db.collection('lessons').updateMany({}, { $set: { avaliability: 5 } });
   res.send("Select a collection, e.g., /collection/lessons");
 });
 
-// retrieve all the object from an collection
-app.get("/collection/:collectionName", (req, res) => {
+// Retrieve all objects from a collection
+app.get("/collection/:collectionName", async (req, res) => {
   try {
-    db.collection(req.params.collectionName)
-      .find({})
-      .toArray()
-      .then((results) => {
-        res.send(results);
-      });
+    const results = await db.collection(req.params.collectionName).find({}).toArray();
+    res.send(results);
   } catch (error) {
-    console.log(error);
+    console.error(error);
+    res.status(500).send("An error occurred while retrieving the collection.");
   }
 });
 
-// Search
-app.post("/search/collection/lessons/", (req, res) => {
+// Search in lessons collection
+app.post("/search/collection/lessons", async (req, res) => {
   try {
-    var search = req.body.search;
-    var sort = req.body.sort || "title";
-    var order = req.body.order == "desc" ? -1 : 1;
+    let search = req.body.search || "";
+    const sort = req.body.sort || "title";
+    const order = req.body.order === "desc" ? -1 : 1;
 
-    if (search) {
-      search = {
-        $or: [
-          { title: { $regex: search, $options: "i" } },
-          { subject: { $regex: search, $options: "i" } },
-          { location: { $regex: search, $options: "i" } },
-        ],
-      };
-    } else {
-      search = {};
-    }
+    const query = {
+      $or: [
+        { title: { $regex: search, $options: "i" } },
+        { subject: { $regex: search, $options: "i" } },
+        { location: { $regex: search, $options: "i" } },
+      ],
+    };
 
-    db.collection("lessons")
-      .find(search)
-      .sort({ [sort]: order })
-      .toArray()
-      .then((results) => {
-        res.send(results);
-      });
+    const results = await db.collection("lessons").find(query).sort({ [sort]: order }).toArray();
+    res.send(results);
   } catch (error) {
-    console.log(error);
+    console.error(error);
+    res.status(500).send("An error occurred while searching the lessons.");
   }
 });
 
-//to insert a document to the collection in mongodb
-app.post("/collection/:collectionName", (req, res) => {
+// Insert a document into a collection
+app.post("/collection/:collectionName", async (req, res) => {
   try {
-    db.collection(req.params.collectionName)
-      .insertOne(req.body)
-      .then((results) => {
-        res.send(results);
-      });
+    const result = await db.collection(req.params.collectionName).insertOne(req.body);
+    res.send(result);
   } catch (error) {
-    console.log(error);
-  }
-});
-//  route to get a lesson by id
-app.get("/collection/:collectionName/:id", (req, res) => {
-  try {
-    db.collection(req.params.collectionName)
-      .findOne({ _id: new ObjectId(req.params.id) })
-      .then((results) => {
-        res.send(results);
-      });
-  } catch (error) {
-    console.log(error);
+    console.error(error);
+    res.status(500).send("An error occurred while inserting the document.");
   }
 });
 
-// route to update a document by ID
-app.put("/collection/:collectionName/:id", (req, res) => {
+// Get a document by ID
+app.get("/collection/:collectionName/:id", async (req, res) => {
   try {
-    db.collection(req.params.collectionName)
-      .updateOne({ _id: new ObjectId(req.params.id) }, { $set: req.body })
-      .then((results) => {
-        res.send(results);
-      });
+    const result = await db.collection(req.params.collectionName).findOne({ _id: new ObjectId(req.params.id) });
+    res.send(result);
   } catch (error) {
-    console.log(error);
+    console.error(error);
+    res.status(500).send("An error occurred while retrieving the document.");
   }
 });
-// route to delete a document 
-app.delete("/collection/:collectionName/:id", (req, res) => {
+
+// Update a document by ID
+app.put("/collection/:collectionName/:id", async (req, res) => {
   try {
-    db.collection(req.params.collectionName)
-      .deleteOne({ _id: ObjectId(req.params.id) })
-      .then((results) => {
-        res.send(results);
-      });
+    const result = await db.collection(req.params.collectionName).updateOne({ _id: new ObjectId(req.params.id) }, { $set: req.body });
+    res.send(result);
   } catch (error) {
-    console.log(error);
+    console.error(error);
+    res.status(500).send("An error occurred while updating the document.");
   }
 });
-// setting app port
-app.listen(3000, () => {
-  console.log("Express.js server running at PORT 3000");
+
+// Delete a document by ID
+app.delete("/collection/:collectionName/:id", async (req, res) => {
+  try {
+    const result = await db.collection(req.params.collectionName).deleteOne({ _id: new ObjectId(req.params.id) });
+    res.send(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("An error occurred while deleting the document.");
+  }
+});
+
+// Setting app port
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Express.js server running at PORT ${PORT}`);
 });
